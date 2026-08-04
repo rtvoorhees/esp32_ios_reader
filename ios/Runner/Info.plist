@@ -9,6 +9,8 @@
 <key>NSBluetoothPeripheralUsageDescription</key>
 <string>This app uses Bluetooth to connect to your ESP32 device.</string>
 	
+	<key>CFBundleDevelopmentRegion</key>
+	
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Esp32 Ios Reader</string>
