@@ -21,6 +21,16 @@ class BleManager {
   Future<void> startScan() async {
     await stopScan();
 
+    // Wait for the Bluetooth adapter to actually be ready before scanning.
+    // Right after app launch, iOS reports CBManagerStateUnknown until it
+    // finishes initializing, so we wait here instead of scanning immediately.
+    if (FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
+      await FlutterBluePlus.adapterState
+          .where((state) => state == BluetoothAdapterState.on)
+          .first
+          .timeout(const Duration(seconds: 10));
+    }
+
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
       for (final result in results) {
         if (result.device.platformName == targetDeviceName) {
