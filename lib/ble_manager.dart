@@ -48,7 +48,7 @@ class BleManager {
       onConnectionStateChange?.call(connected);
     });
 
-    await device.connect(autoConnect: false);
+    await device.connect(autoConnect: false, license: License.nonprofit);
     await _discoverAndSubscribe(device);
   }
 
