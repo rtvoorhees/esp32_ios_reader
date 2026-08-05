@@ -23,7 +23,9 @@ class BleManager {
 
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
       for (final result in results) {
-        if (result.device.platformName == targetDeviceName) {
+        final matchesName = result.device.platformName == targetDeviceName;
+        final matchesService = result.advertisementData.serviceUuids.contains(serviceUuid);
+        if (matchesName || matchesService) {
           await stopScan();
           await _connectToDevice(result.device);
           break;
@@ -38,7 +40,7 @@ class BleManager {
     Exception? lastError;
     for (int attempt = 0; attempt < 5; attempt++) {
       try {
-        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+        await FlutterBluePlus.startScan(withServices: [serviceUuid], timeout: const Duration(seconds: 15));
         return;
       } catch (e) {
         lastError = e is Exception ? e : Exception(e.toString());
