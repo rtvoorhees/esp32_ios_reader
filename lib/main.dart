@@ -46,6 +46,8 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
         _isConnected = connected;
         if (!connected) {
           _isScanning = false;
+        } else {
+          _errorMessage = null;
         }
       });
     };

@@ -21,6 +21,8 @@ class BleManager {
   Future<void> startScan() async {
     await stopScan();
 
+    final completer = Completer<void>();
+
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
       for (final result in results) {
         final matchesName = result.device.platformName == targetDeviceName;
@@ -28,6 +30,7 @@ class BleManager {
         if (matchesName || matchesService) {
           await stopScan();
           await _connectToDevice(result.device);
+          if (!completer.isCompleted) completer.complete();
           break;
         }
       }
@@ -53,6 +56,13 @@ class BleManager {
     if (!scanStarted) {
       throw lastError ?? Exception("Failed to start scan");
     }
+
+    // Wait for either a device to be found and connected (completer
+    // finishes early), or the 15 second scan window to fully elapse.
+    await completer.future.timeout(
+      const Duration(seconds: 16),
+      onTimeout: () {},
+    );
 
     if (_device == null) {
       throw TimeoutException("No ESP32 device found nearby. Make sure it is powered on and in range.");
