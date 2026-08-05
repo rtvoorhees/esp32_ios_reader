@@ -38,17 +38,25 @@ class BleManager {
     // adapter, so the first attempt may fail while the adapter is still
     // in the "unknown" state. We retry briefly to give it time to settle.
     Exception? lastError;
+    bool scanStarted = false;
     for (int attempt = 0; attempt < 5; attempt++) {
       try {
         await FlutterBluePlus.startScan(withServices: [serviceUuid], timeout: const Duration(seconds: 15));
-        return;
+        scanStarted = true;
+        break;
       } catch (e) {
         lastError = e is Exception ? e : Exception(e.toString());
         await Future.delayed(const Duration(seconds: 1));
       }
     }
 
-    throw lastError ?? Exception("Failed to start scan");
+    if (!scanStarted) {
+      throw lastError ?? Exception("Failed to start scan");
+    }
+
+    if (_device == null) {
+      throw TimeoutException("No ESP32 device found nearby. Make sure it is powered on and in range.");
+    }
   }
 
   Future<void> stopScan() async {
