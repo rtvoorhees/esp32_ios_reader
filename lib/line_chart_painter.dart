@@ -1,49 +1,5 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-
-class LineChartPainter extends CustomPainter {
-  final List<num> data;
-  final Color color;
-
-  LineChartPainter({required this.data, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.length < 2) return;
-
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-
-    final minValue = data.reduce((a, b) => a < b ? a : b);
-    final maxValue = data.reduce((a, b) => a > b ? a : b);
-    final range = (maxValue - minValue).abs();
-    final effectiveRange = range == 0 ? 1 : range;
-
-    final path = Path();
-    final stepX = size.width / (data.length - 1);
-
-    for (int i = 0; i < data.length; i++) {
-      final normalized = (data[i] - minValue) / effectiveRange;
-      final x = i * stepX;
-      final y = size.height - (normalized * size.height);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant LineChartPainter oldDelegate) {
-    return true;
-  }
-}
 
 class LiveLineChart extends StatelessWidget {
   final List<num> data;
@@ -59,18 +15,55 @@ class LiveLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spots = <FlSpot>[
+      for (int i = 0; i < data.length; i++)
+        FlSpot(i.toDouble(), data[i].toDouble()),
+    ];
+
+    double minY = 0;
+    double maxY = 1;
+    if (data.isNotEmpty) {
+      minY = data.reduce((a, b) => a < b ? a : b).toDouble();
+      maxY = data.reduce((a, b) => a > b ? a : b).toDouble();
+      if (minY == maxY) {
+        minY -= 1;
+        maxY += 1;
+      }
+    }
+
+    final maxX = data.isEmpty ? 1.0 : (data.length - 1).toDouble();
+
     return Container(
       height: height,
       width: double.infinity,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: RepaintBoundary(
-        child: CustomPaint(
-          painter: LineChartPainter(data: data, color: color),
-        ),
-      ),
+      child: spots.length < 2
+          ? const SizedBox.shrink()
+          : LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: maxX,
+                minY: minY,
+                maxY: maxY,
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                borderData: FlBorderData(show: false),
+                lineTouchData: const LineTouchData(enabled: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: false,
+                    color: color,
+                    barWidth: 2,
+                    dotData: const FlDotData(show: false),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
