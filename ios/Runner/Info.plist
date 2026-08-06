@@ -9,6 +9,10 @@
 <key>NSBluetoothPeripheralUsageDescription</key>
 <string>This app uses Bluetooth to connect to your ESP32 device.</string>
 	
+	<key>UIFileSharingEnabled</key>
+<true/>
+<key>LSSupportsOpeningDocumentsInPlace</key>
+<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
