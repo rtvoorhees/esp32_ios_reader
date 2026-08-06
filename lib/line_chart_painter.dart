@@ -41,7 +41,7 @@ class LineChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant LineChartPainter oldDelegate) {
-    return oldDelegate.data != data;
+    return true;
   }
 }
 
