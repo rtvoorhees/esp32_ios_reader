@@ -33,37 +33,43 @@ class LiveLineChart extends StatelessWidget {
 
     final maxX = data.isEmpty ? 1.0 : (data.length - 1).toDouble();
 
-    return Container(
+    return SizedBox(
       height: height,
       width: double.infinity,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-      ),
-      child: spots.length < 2
-          ? const SizedBox.shrink()
-          : LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: maxX,
-                minY: minY,
-                maxY: maxY,
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineTouchData: const LineTouchData(enabled: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: false,
-                    color: color,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: spots.length < 2
+                ? const SizedBox.shrink()
+                : LineChart(
+                    LineChartData(
+                      minX: 0,
+                      maxX: maxX,
+                      minY: minY,
+                      maxY: maxY,
+                      gridData: const FlGridData(show: false),
+                      titlesData: const FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      lineTouchData: const LineTouchData(enabled: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: false,
+                          color: color,
+                          barWidth: 2,
+                          dotData: const FlDotData(show: false),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
+          ),
+        ),
+      ),
     );
   }
 }
