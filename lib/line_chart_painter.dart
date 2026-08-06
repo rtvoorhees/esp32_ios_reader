@@ -66,8 +66,10 @@ class LiveLineChart extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: CustomPaint(
-        painter: LineChartPainter(data: data, color: color),
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: LineChartPainter(data: data, color: color),
+        ),
       ),
     );
   }
