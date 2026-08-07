@@ -124,6 +124,7 @@ class LiveLineChart extends StatelessWidget {
     this.lineWidth = 2.0,
     this.minY,
     this.maxY,
+    this.height = 120,
   });
 
   final List<num> data;
@@ -132,18 +133,29 @@ class LiveLineChart extends StatelessWidget {
   final double? minY;
   final double? maxY;
 
+  /// Fixed height for the chart. A Column gives its children unbounded
+  /// height, so this widget must claim a concrete size itself rather than
+  /// relying on CustomPaint's Size.infinite, which throws a layout
+  /// exception when placed directly inside a Column (silently breaking
+  /// everything rendered after it in release builds).
+  final double height;
+
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CustomPaint(
-        painter: LiveLineChartPainter(
-          data: data,
-          lineColor: lineColor,
-          lineWidth: lineWidth,
-          minY: minY,
-          maxY: maxY,
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: LiveLineChartPainter(
+            data: data,
+            lineColor: lineColor,
+            lineWidth: lineWidth,
+            minY: minY,
+            maxY: maxY,
+          ),
+          size: Size.infinite,
         ),
-        size: Size.infinite,
       ),
     );
   }
