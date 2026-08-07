@@ -258,14 +258,14 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 child: Text('Channel A: ${channelLabels[_channelA]}'),
               ),
               const SizedBox(height: 8),
-              LiveLineChart(data: _historyA, color: Colors.red),
+              LiveLineChart(data: _historyA, lineColor: Colors.red),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => _pickChannel(false),
                 child: Text('Channel B: ${channelLabels[_channelB]}'),
               ),
               const SizedBox(height: 8),
-              LiveLineChart(data: _historyB, color: Colors.blue),
+              LiveLineChart(data: _historyB, lineColor: Colors.blue),
               const SizedBox(height: 20),
               Text(
                 'Red: ${channelLabels[_channelA]}   '
