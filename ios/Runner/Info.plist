@@ -9,6 +9,10 @@
 <key>NSBluetoothPeripheralUsageDescription</key>
 <string>This app uses Bluetooth to connect to your ESP32 device.</string>
 	
+	<key>UIBackgroundModes</key>
+<array>
+	<string>bluetooth-central</string>
+</array>
 	<key>UIFileSharingEnabled</key>
 <true/>
 <key>LSSupportsOpeningDocumentsInPlace</key>
@@ -78,3 +82,4 @@
 	</array>
 </dict>
 </plist>
+
