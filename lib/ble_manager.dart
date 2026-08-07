@@ -20,6 +20,12 @@ class BleManager {
 
   Future<void> startScan() async {
     await stopScan();
+    // Always start from a clean slate: a previous attempt may have set
+    // _device without ever completing a real connection (e.g. a hung
+    // connect() call to a device that went offline). Without this reset,
+    // this attempt's timeout check below can be fooled into thinking a
+    // connection succeeded when it didn't.
+    _device = null;
 
     final completer = Completer<void>();
 
@@ -29,8 +35,17 @@ class BleManager {
         final matchesService = result.advertisementData.serviceUuids.contains(serviceUuid);
         if (matchesName || matchesService) {
           await stopScan();
-          await _connectToDevice(result.device);
-          if (!completer.isCompleted) completer.complete();
+          try {
+            await _connectToDevice(result.device);
+            if (!completer.isCompleted) completer.complete();
+          } catch (e) {
+            // Connection failed or timed out (e.g. device advertised but
+            // was actually unreachable). Make sure nothing lingers into
+            // the next attempt, then surface the failure so the caller's
+            // timeout logic below reports it accurately.
+            await _resetConnectionState();
+            if (!completer.isCompleted) completer.completeError(e);
+          }
           break;
         }
       }
@@ -58,13 +73,19 @@ class BleManager {
     }
 
     // Wait for either a device to be found and connected (completer
-    // finishes early), or the 15 second scan window to fully elapse.
-    await completer.future.timeout(
-      const Duration(seconds: 16),
-      onTimeout: () {},
-    );
+    // finishes early, possibly with an error), or the 15 second scan
+    // window to fully elapse.
+    try {
+      await completer.future.timeout(
+        const Duration(seconds: 16),
+        onTimeout: () {},
+      );
+    } on TimeoutException {
+      // fall through to the check below
+    }
 
     if (_device == null) {
+      await _resetConnectionState();
       throw TimeoutException("No ESP32 device found nearby. Make sure it is powered on and in range.");
     }
   }
@@ -76,6 +97,21 @@ class BleManager {
   }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
+    // Give the connect attempt a bounded timeout. Without this,
+    // device.connect() can hang indefinitely on iOS if the device
+    // advertised but is actually unreachable (e.g. just powered off),
+    // silently blocking every future connection attempt.
+    await device
+        .connect(autoConnect: false, license: License.nonprofit)
+        .timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {
+        throw TimeoutException("Connection to device timed out.");
+      },
+    );
+
+    // Only mark the device as "current" once we know the connection
+    // actually succeeded.
     _device = device;
 
     _connectionSubscription = device.connectionState.listen((state) {
@@ -83,8 +119,16 @@ class BleManager {
       onConnectionStateChange?.call(connected);
     });
 
-    await device.connect(autoConnect: false, license: License.nonprofit);
-    await _discoverAndSubscribe(device);
+    try {
+      await _discoverAndSubscribe(device);
+    } catch (e) {
+      // Service/characteristic discovery failed after a successful
+      // connect - disconnect so we don't leave a half-set-up connection
+      // around, then propagate the failure.
+      await device.disconnect();
+      _device = null;
+      rethrow;
+    }
   }
 
   Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
@@ -123,12 +167,23 @@ class BleManager {
     onValuesReceived?.call(values);
   }
 
-  Future<void> disconnect() async {
+  /// Tears down any in-progress connection state without throwing, so a
+  /// failed attempt never leaks subscriptions or a half-connected device
+  /// into the next call to startScan().
+  Future<void> _resetConnectionState() async {
     await _valueSubscription?.cancel();
     _valueSubscription = null;
     await _connectionSubscription?.cancel();
     _connectionSubscription = null;
-    await _device?.disconnect();
+    try {
+      await _device?.disconnect();
+    } catch (_) {
+      // Already disconnected/unreachable - nothing more to do.
+    }
     _device = null;
+  }
+
+  Future<void> disconnect() async {
+    await _resetConnectionState();
   }
 }
