@@ -109,8 +109,10 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
       await _bleManager.startScan();
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
         _isScanning = false;
+        if (!_isConnected) {
+          _errorMessage = e.toString();
+        }
       });
     }
   }
@@ -318,3 +320,5 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     );
   }
 }
+
+
