@@ -17,9 +17,15 @@ workflows:
           keychain initialize
           codemagic-initialize-signing-files
           keychain add-certificates
+      - name: Wipe Cached Build Settings
+        script: |
+          # Forcefully clean out frozen Flutter variables and lockfiles
+          flutter clean
+          rm -rf ios/Flutter/Generated.xcconfig
+          rm -rf ios/Flutter/flutter_export_environment.sh
       - name: Flutter build App Store IPA
         script: |
-          flutter analyze
-          flutter build ipa --release --build-number=85
+          flutter pub get
+          flutter build ipa --release --build-number=95
     artifacts:
       - build/ios/ipa/*.ipa
