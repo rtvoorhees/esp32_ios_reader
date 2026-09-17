@@ -17,15 +17,16 @@ workflows:
           keychain initialize
           codemagic-initialize-signing-files
           keychain add-certificates
-      - name: Wipe Cached Build Settings
+      - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
-          # Forcefully clean out frozen Flutter variables and lockfiles
+          # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          rm -rf ios/Flutter/Generated.xcconfig
-          rm -rf ios/Flutter/flutter_export_environment.sh
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=110/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 110/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>110</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --build-number=95
+          flutter build ipa --release --build-number=110
     artifacts:
       - build/ios/ipa/*.ipa
