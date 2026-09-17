@@ -1,0 +1,25 @@
+workflows:
+  ios-testflight-workflow:
+    name: iOS TestFlight Build
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+    scripts:
+      - name: Set up code signing settings
+        script: |
+          keychain initialize
+          codemagic-initialize-signing-files
+          keychain add-certificates
+      - name: Flutter build App Store IPA
+        script: |
+          flutter analyze
+          flutter build ipa --release --build-number=85
+    artifacts:
+      - build/ios/ipa/*.ipa
