@@ -6,6 +6,8 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+      groups:
+        - apple_credentials
     triggering:
       events:
         - push
@@ -16,18 +18,11 @@ workflows:
         script: |
           keychain initialize
           
-          # This writes your private key precisely to a temporary file right on the Mac runner
-          cat << 'EOF' > /tmp/apple_key.p8
-          -----BEGIN PRIVATE KEY-----
-          PASTE_YOUR_NOTEPAD_TEXT_HERE_LINE_BY_LINE_EXACTLY_AS_IT_LOOKS
-          -----END PRIVATE KEY-----
-          EOF
-          
-          # Run the connection fetch using the clean file reference path
+          # This pulls your secure variables cleanly from the dashboard without formatting errors
           app-store-connect fetch-signing-files "com.rtvoorhees.esp32_ios_reader" \
-            --issuer-id "PASTE_YOUR_LONG_ISSUER_ID_STRING_HERE" \
-            --key-id "PASTE_YOUR_10_DIGIT_KEY_ID_HERE" \
-            --private-key /tmp/apple_key.p8 \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key "$APP_STORE_CONNECT_PRIVATE_KEY" \
             --type IOS_APP_STORE \
             --create
             
@@ -36,12 +31,12 @@ workflows:
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=145/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 145/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>145</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=150/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 150/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>150</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --build-number=145
+          flutter build ipa --release --build-number=150
     artifacts:
       - build/ios/ipa/*.ipa
