@@ -39,13 +39,13 @@ workflows:
         script: |
           flutter pub get
           flutter build ipa --release --export-method=app-store --build-number=520
-      
-      # FORCE UPLOAD: This manually triggers the upload stream via the command line
       - name: Deploy Compiled Binary to Apple TestFlight
         script: |
+          # Added the explicit path target pointing directly to your compiled Flutter application package file container
           app-store-connect publish \
             --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY"
+            --private-key="$APP_STORE_CONNECT_PRIVATE_KEY" \
+            --path="build/ios/ipa/esp32_ios_reader.ipa"
     artifacts:
       - build/ios/ipa/*.ipa
