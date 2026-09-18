@@ -7,8 +7,8 @@ workflows:
       flutter: stable
       xcode: latest
       vars:
-        # We define your app's true target path directly into the machine environment variables matrix
-        XCODE_BUNDLE_IDENTIFIER: "com.rtvoorhees.esp32_ios_reader"
+        # Corrected to match Apple's exact case-sensitive lowercase registered identifier structure
+        XCODE_BUNDLE_IDENTIFIER: "com.rtvoorhees.esp32iosreader"
     triggering:
       events:
         - push
@@ -18,21 +18,18 @@ workflows:
       - name: Set up code signing settings
         script: |
           keychain initialize
-          
-          # Runs cleanly without syntax flags, grabbing the bundle ID automatically from above
           xcode-project use-profiles
-          
           keychain add-certificates
       - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=220/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 220/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>220</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=230/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 230/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>230</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --build-number=220
+          flutter build ipa --release --build-number=230
     artifacts:
       - build/ios/ipa/*.ipa
