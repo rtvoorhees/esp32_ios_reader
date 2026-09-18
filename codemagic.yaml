@@ -39,10 +39,8 @@ workflows:
         script: |
           flutter pub get
           
-          # Clean wrapper command matching Codemagic's strict parameters
-          xcode-project build-ipa \
-            --workspace="ios/Runner.xcworkspace" \
-            --scheme="Runner"
+          # Native Flutter command that handles the full archive compiling AND app-store compression automatically
+          flutter build ipa --release --export-method=app-store --build-number=520
       - name: Deploy Compiled Binary to Apple TestFlight
         script: |
           app-store-connect publish \
