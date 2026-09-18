@@ -24,9 +24,9 @@ workflows:
       - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=480/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 480/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>480</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=490/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 490/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>490</g' {} +
           
           sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = KAP78JLY35;\n\t\t\t\tCODE_SIGN_STYLE = Manual;\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = ESP32_Reader_Provisioning_Profile;/g' ios/Runner.xcodeproj/project.pbxproj
           
@@ -38,14 +38,14 @@ workflows:
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --export-method=app-store --build-number=480
+          flutter build ipa --release --export-method=app-store --build-number=490
     artifacts:
       - build/ios/ipa/*.ipa
       
-    # UPDATED BLOCK: Uses your secure environment variable text strings to log into Apple directly
+    # FIXED BLOCK: Aligned with Codemagic's exact required variable key names
     publishing:
       app_store_connect:
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_identifier: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
