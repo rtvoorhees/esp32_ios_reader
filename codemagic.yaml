@@ -16,30 +16,20 @@ workflows:
     scripts:
       - name: Set up code signing settings
         script: |
-          # 1. Initialize a clean temporary system keychain
           keychain initialize
-          
-          # 2. Re-create the hidden native Apple directory structure on the virtual Mac
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          
-          # 3. Manually decode your Base64 dashboard text variables into physical system files
           echo "$CM_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
           echo "$CM_PROVISIONING_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-          
-          # 4. Import the physical certificate using strict explicit flags
           keychain add-certificates --certificate=/tmp/certificate.p12 --certificate-password="$CM_CERTIFICATE_PASSWORD"
       - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
-          # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=450/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 450/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>440</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=460/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 460/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>460</g' {} +
           
-          # FORCE-INJECT production distribution values straight into Xcode's internal block configs, wiping out any "iPhone Developer" defaults
           sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = KAP78JLY35;\n\t\t\t\tCODE_SIGN_STYLE = Manual;\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = ESP32_Reader_Provisioning_Profile;/g' ios/Runner.xcodeproj/project.pbxproj
           
-          # Forcefully inject manual code signing instructions into the native configuration settings files
           mkdir -p ios/Flutter
           echo "DEVELOPMENT_TEAM = KAP78JLY35" >> ios/Flutter/Generated.xcconfig
           echo "CODE_SIGN_STYLE = Manual" >> ios/Flutter/Generated.xcconfig
@@ -48,8 +38,12 @@ workflows:
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          
-          # Flag-free compilation that inherits the fully synchronized blueprint variables smoothly
-          flutter build ipa --release --export-method=app-store --build-number=450
+          flutter build ipa --release --export-method=app-store --build-number=460
     artifacts:
       - build/ios/ipa/*.ipa
+    
+    # NEW BLOCK: Automatically logs into Apple and deploys the artifact to TestFlight
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
