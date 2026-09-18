@@ -32,17 +32,14 @@ workflows:
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=390/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 390/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>390</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=400/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 400/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>400</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
           
-          # We pass custom xcargs flags to force Xcode to override local file presets and sign with your App Store assets
-          flutter build ipa --release \
-            --export-method=app-store \
-            --build-number=390 \
-            --xcargs="DEVELOPMENT_TEAM=KAP78JLY35,CODE_SIGN_STYLE=Manual,CODE_SIGN_IDENTITY='Apple Distribution'"
+          # Restructured using the standard '--' separator syntax to securely pass overrides straight to Xcode
+          flutter build ipa --release --export-method=app-store --build-number=400 -- DEVELOPMENT_TEAM=KAP78JLY35 CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution"
     artifacts:
       - build/ios/ipa/*.ipa
