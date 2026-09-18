@@ -3,11 +3,6 @@ workflows:
     name: iOS TestFlight Build
     max_build_duration: 30
     instance_type: mac_mini_m1
-    
-    # Restored the required integration connection bridge parameters
-    integrations:
-      app_store_connect: Codemagic
-      
     environment:
       flutter: stable
       xcode: latest
@@ -29,9 +24,9 @@ workflows:
       - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=470/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 470/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>470</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=480/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 480/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>480</g' {} +
           
           sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = KAP78JLY35;\n\t\t\t\tCODE_SIGN_STYLE = Manual;\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = ESP32_Reader_Provisioning_Profile;/g' ios/Runner.xcodeproj/project.pbxproj
           
@@ -43,10 +38,14 @@ workflows:
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --export-method=app-store --build-number=470
+          flutter build ipa --release --export-method=app-store --build-number=480
     artifacts:
       - build/ios/ipa/*.ipa
+      
+    # UPDATED BLOCK: Uses your secure environment variable text strings to log into Apple directly
     publishing:
       app_store_connect:
-        auth: integration
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
         submit_to_testflight: true
