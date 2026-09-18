@@ -8,9 +8,6 @@ workflows:
       xcode: latest
       groups:
         - apple_credentials
-      vars:
-        # We inject your Team ID directly into the macOS system environment variables
-        DEVELOPMENT_TEAM: "KAP78JLY35"
     triggering:
       events:
         - push
@@ -35,14 +32,17 @@ workflows:
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=380/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 380/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>380</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=390/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 390/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>390</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
           
-          # Clean, flag-free command that now safely inherits DEVELOPMENT_TEAM from the system environment
-          flutter build ipa --release --export-method=app-store --build-number=380
+          # We pass custom xcargs flags to force Xcode to override local file presets and sign with your App Store assets
+          flutter build ipa --release \
+            --export-method=app-store \
+            --build-number=390 \
+            --xcargs="DEVELOPMENT_TEAM=KAP78JLY35,CODE_SIGN_STYLE=Manual,CODE_SIGN_IDENTITY='Apple Distribution'"
     artifacts:
       - build/ios/ipa/*.ipa
