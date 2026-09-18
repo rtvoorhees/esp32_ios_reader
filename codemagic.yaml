@@ -35,18 +35,52 @@ workflows:
           echo "CODE_SIGN_STYLE = Manual" >> ios/Flutter/Generated.xcconfig
           echo "CODE_SIGN_IDENTITY = Apple Distribution" >> ios/Flutter/Generated.xcconfig
           echo "PROVISIONING_PROFILE_SPECIFIER = ESP32_Reader_Provisioning_Profile" >> ios/Flutter/Generated.xcconfig
-      - name: Flutter build App Store IPA
+      - name: Compile and Export App Store IPA Manually
         script: |
           flutter pub get
           
-          # Native Flutter command that handles the full archive compiling AND app-store compression automatically
-          flutter build ipa --release --export-method=app-store --build-number=520
+          # 1. Force Flutter to prepare native build frameworks cleanly
+          flutter build ios --release --no-codesign
+          
+          # 2. Compile the raw Xcode archive container on the server
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -config Release \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            archive
+            
+          # 3. Create a configuration file detailing our App Store intentions
+          cat <<EOF > /tmp/ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>KAP78JLY35</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.rtvoorhees.esp32iosreader</key>
+                  <string>ESP32_Reader_Provisioning_Profile</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+          
+          # 4. Force a strict manual export sequence to guarantee our physical .ipa output
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportOptionsPlist /tmp/ExportOptions.plist \
+            -exportPath build/ios/ipa
       - name: Deploy Compiled Binary to Apple TestFlight
         script: |
           app-store-connect publish \
             --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --private-key="$APP_STORE_CONNECT_PRIVATE_KEY" \
-            --path="**/*.ipa"
+            --path="build/ios/ipa/*.ipa"
     artifacts:
-      - "**/*.ipa"
+      - build/ios/ipa/*.ipa
