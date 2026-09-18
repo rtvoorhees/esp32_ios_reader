@@ -32,11 +32,15 @@ workflows:
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=410/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 410/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>410</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=420/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 420/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>420</g' {} +
           
-          # Forcefully inject manual code signing instructions into the native build settings
+          # FORCE-INJECT your Team ID and manual signing parameters directly into every build configuration target block inside Xcode
+          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = KAP78JLY35;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          
+          # Forcefully inject manual code signing instructions into the native build settings files
           mkdir -p ios/Flutter
           echo "DEVELOPMENT_TEAM = KAP78JLY35" >> ios/Flutter/Generated.xcconfig
           echo "CODE_SIGN_STYLE = Manual" >> ios/Flutter/Generated.xcconfig
@@ -45,7 +49,7 @@ workflows:
         script: |
           flutter pub get
           
-          # Flag-free compilation that inherits the injected manual signing parameters seamlessly
-          flutter build ipa --release --export-method=app-store --build-number=410
+          # Clean compilation that inherits the fully synchronized blueprint variables smoothly
+          flutter build ipa --release --export-method=app-store --build-number=420
     artifacts:
       - build/ios/ipa/*.ipa
