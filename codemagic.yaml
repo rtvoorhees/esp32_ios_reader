@@ -39,11 +39,10 @@ workflows:
         script: |
           flutter pub get
           
-          # Replaced generic build command with Codemagic's specialized compiler wrapper to force a true .ipa export
+          # Clean wrapper command matching Codemagic's strict parameters
           xcode-project build-ipa \
             --workspace="ios/Runner.xcworkspace" \
-            --scheme="Runner" \
-            --bundle-id="com.rtvoorhees.esp32iosreader"
+            --scheme="Runner"
       - name: Deploy Compiled Binary to Apple TestFlight
         script: |
           app-store-connect publish \
