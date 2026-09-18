@@ -26,18 +26,18 @@ workflows:
           echo "$CM_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
           echo "$CM_PROVISIONING_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
           
-          # 4. Import the physical certificate cleanly using standard default paths
-          keychain add-certificates --certificates /tmp/certificate.p12 --password "$CM_CERTIFICATE_PASSWORD"
+          # 4. Import the physical certificate cleanly using space separation parameters
+          keychain add-certificates /tmp/certificate.p12 "$CM_CERTIFICATE_PASSWORD"
       - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=310/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 310/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>310</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=320/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 320/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>320</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --build-number=310
+          flutter build ipa --release --build-number=320
     artifacts:
       - build/ios/ipa/*.ipa
