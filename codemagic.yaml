@@ -16,20 +16,20 @@ workflows:
         script: |
           keychain initialize
           
-          # Force codemagic to read the physical files you uploaded to your UI Settings profiles
-          xcode-project use-profiles --bundle-id="com.rtvoorhees.esp32iosreader"
+          # Clean, flag-free command that automatically scans your UI settings for your certificate files
+          xcode-project use-profiles
           
           keychain add-certificates
       - name: Force Rewrite Frozen Xcode Build Metadata
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=250/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 250/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>250</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=260/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 260/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>260</g' {} +
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
-          flutter build ipa --release --build-number=250
+          flutter build ipa --release --build-number=260
     artifacts:
       - build/ios/ipa/*.ipa
