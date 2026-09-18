@@ -32,23 +32,24 @@ workflows:
         script: |
           # Wipes out any cached data and forces a hard text replacement inside native iOS files
           flutter clean
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=430/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 430/g' {} +
-          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>430</g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/FLUTTER_BUILD_NUMBER=24/FLUTTER_BUILD_NUMBER=440/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/CURRENT_PROJECT_VERSION = 24/CURRENT_PROJECT_VERSION = 440/g' {} +
+          find ios -type f \( -name "*.xcconfig" -o -name "*.sh" -o -name "*.pbxproj" -o -name "*.plist" \) -exec sed -i '' 's/>24</>440</g' {} +
           
-          # Forcefully injects your Team ID right after the core build settings block opener line inside Xcode
-          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = KAP78JLY35;\n\t\t\t\tCODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          # Forcefully injects your Team ID and Manual styling rules right after the build settings openers inside Xcode
+          sed -i '' 's/buildSettings = {/buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = KAP78JLY35;\n\t\t\t\tCODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = ESP32_Reader_Provisioning_Profile;/g' ios/Runner.xcodeproj/project.pbxproj
           
-          # Forcefully inject manual code signing instructions into the native build settings files
+          # Forcefully inject manual code signing instructions into the native configuration settings files
           mkdir -p ios/Flutter
           echo "DEVELOPMENT_TEAM = KAP78JLY35" >> ios/Flutter/Generated.xcconfig
           echo "CODE_SIGN_STYLE = Manual" >> ios/Flutter/Generated.xcconfig
           echo "CODE_SIGN_IDENTITY = Apple Distribution" >> ios/Flutter/Generated.xcconfig
+          echo "PROVISIONING_PROFILE_SPECIFIER = ESP32_Reader_Provisioning_Profile" >> ios/Flutter/Generated.xcconfig
       - name: Flutter build App Store IPA
         script: |
           flutter pub get
           
-          # Clean compilation that inherits the fully synchronized blueprint variables smoothly
-          flutter build ipa --release --export-method=app-store --build-number=430
+          # Flag-free compilation that inherits the fully synchronized blueprint variables smoothly
+          flutter build ipa --release --export-method=app-store --build-number=440
     artifacts:
       - build/ios/ipa/*.ipa
