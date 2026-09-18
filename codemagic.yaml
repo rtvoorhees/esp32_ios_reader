@@ -41,11 +41,11 @@ workflows:
           flutter build ipa --release --export-method=app-store --build-number=520
       - name: Deploy Compiled Binary to Apple TestFlight
         script: |
-          # Added the explicit *.ipa file extension wildcard so the tool identifies the file container instantly
+          # Changed the path parameter argument to run a deep global search for any compiled ipa package file
           app-store-connect publish \
             --issuer-id="$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id="$APP_STORE_CONNECT_KEY_IDENTIFIER" \
             --private-key="$APP_STORE_CONNECT_PRIVATE_KEY" \
-            --path="build/ios/ipa/*.ipa"
+            --path="**/*.ipa"
     artifacts:
-      - build/ios/ipa/*.ipa
+      - "**/*.ipa"
