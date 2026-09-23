@@ -100,8 +100,15 @@ class BleManager {
     });
   }
 
-  void _handlePayload(List<int> bytes) {
-    if (bytes.isEmpty) return;
+   void _handlePayload(List<int> bytes) {
+    if (bytes.isEmpty) {
+      print("⚠️ Received an empty Bluetooth data payload!");
+      return;
+    }
+    
+    // DIAGNOSTIC LOGGING: Prints the exact raw bytes your ESP32 is sending over-the-air
+    print("📥 RAW SENSOR BYTES RECEIVED (Length: ${bytes.length}): $bytes");
+
     try {
       final buffer = Uint8List.fromList(bytes).buffer;
       final data = ByteData.view(buffer);
@@ -114,7 +121,7 @@ class BleManager {
         }
       }
 
-      // Format B: If values read as zero, parse them as 32-bit floats scaled for the UI
+      // Format B: If 16-bit returns zeros, try parsing as 32-bit floats
       if (bytes.length >= 16 && values.every((v) => v == 0)) {
         values.clear();
         for (int i = 0; i < bytes.length; i += 4) {
@@ -124,6 +131,14 @@ class BleManager {
           }
         }
       }
+
+      print("📊 PARSED VALUES READY FOR DASHBOARD: $values");
+      onValuesReceived?.call(values);
+    } catch (e) {
+      print("❌ Telemetry byte string parsing exception: $e");
+    }
+  }
+
 
       onValuesReceived?.call(values);
     } catch (e) {
