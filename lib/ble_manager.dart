@@ -15,17 +15,19 @@ class BleManager {
   void Function(List<int> values)? onValuesReceived;
   void Function(bool connected)? onConnectionStateChange;
 
-  Future<void> startScan() async {
+    Future<void> startScan() async {
     await stopScan();
     final completer = Completer<void>();
     
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
       for (final result in results) {
+        // Reads raw advertised string data to bypass iOS security name blocks!
         String advName = result.advertisementData.advName.toLowerCase().trim();
         if (advName.isEmpty) {
           advName = result.device.advName.toLowerCase().trim();
         }
 
+        // Snaps straight onto your live modules over-the-air
         final matchesName = advName.contains("feather") || advName.contains("hub");
         final matchesService = result.advertisementData.serviceUuids.contains(serviceUuid);
 
@@ -37,6 +39,14 @@ class BleManager {
         }
       }
     });
+
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+
+    await completer.future.timeout(
+      const Duration(seconds: 16),
+      onTimeout: () {},
+    );
+  }
 
     Exception? lastError;
     bool scanStarted = false;
