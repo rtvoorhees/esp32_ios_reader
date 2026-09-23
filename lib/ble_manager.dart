@@ -78,7 +78,6 @@ class BleManager {
       onConnectionStateChange?.call(connected);
     });
     await device.connect(autoConnect: false, license: License.nonprofit);
-
     await _discoverAndSubscribe(device);
   }
 
@@ -100,13 +99,12 @@ class BleManager {
     });
   }
 
-   void _handlePayload(List<int> bytes) {
+  void _handlePayload(List<int> bytes) {
     if (bytes.isEmpty) {
       print("⚠️ Received an empty Bluetooth data payload!");
       return;
     }
     
-    // DIAGNOSTIC LOGGING: Prints the exact raw bytes your ESP32 is sending over-the-air
     print("📥 RAW SENSOR BYTES RECEIVED (Length: ${bytes.length}): $bytes");
 
     try {
@@ -121,7 +119,7 @@ class BleManager {
         }
       }
 
-      // Format B: If 16-bit returns zeros, try parsing as 32-bit floats
+      // Format B: Try parsing as 32-bit floats if 16-bit returns zeros
       if (bytes.length >= 16 && values.every((v) => v == 0)) {
         values.clear();
         for (int i = 0; i < bytes.length; i += 4) {
@@ -136,13 +134,6 @@ class BleManager {
       onValuesReceived?.call(values);
     } catch (e) {
       print("❌ Telemetry byte string parsing exception: $e");
-    }
-  }
-
-
-      onValuesReceived?.call(values);
-    } catch (e) {
-      print("Telemetry byte string parsing exception: $e");
     }
   }
 
