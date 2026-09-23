@@ -77,7 +77,8 @@ class BleManager {
       final connected = state == BluetoothConnectionState.connected;
       onConnectionStateChange?.call(connected);
     });
-    await device.connect(autoConnect: false);
+    await device.connect(autoConnect: false, license: License.nonprofit);
+
     await _discoverAndSubscribe(device);
   }
 
