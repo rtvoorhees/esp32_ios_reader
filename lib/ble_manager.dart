@@ -42,7 +42,8 @@ class BleManager {
     bool scanStarted = false;
     for (int attempt = 0; attempt < 5; attempt++) {
       try {
-        await FlutterBluePlus.startScan(withServices: [serviceUuid], timeout: const Duration(seconds: 15));
+        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+;
         scanStarted = true;
         break;
       } catch (e) {
