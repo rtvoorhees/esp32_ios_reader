@@ -15,7 +15,7 @@ class BleManager {
   void Function(List<int> values)? onValuesReceived;
   void Function(bool connected)? onConnectionStateChange;
 
-    Future<void> startScan() async {
+  Future<void> startScan() async {
     await stopScan();
     final completer = Completer<void>();
     
@@ -48,34 +48,6 @@ class BleManager {
     );
   }
 
-    Exception? lastError;
-    bool scanStarted = false;
-    for (int attempt = 0; attempt < 5; attempt++) {
-      try {
-        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
-;
-        scanStarted = true;
-        break;
-      } catch (e) {
-        lastError = e is Exception ? e : Exception(e.toString());
-        await Future.delayed(const Duration(seconds: 1));
-      }
-    }
-
-    if (!scanStarted) {
-      throw lastError ?? Exception("Failed to start scan");
-    }
-
-    await completer.future.timeout(
-      const Duration(seconds: 16),
-      onTimeout: () {},
-    );
-
-    if (_device == null) {
-      throw TimeoutException("No ESP32 device found nearby. Make sure it is powered on and in range.");
-    }
-  }
-
   Future<void> stopScan() async {
     await FlutterBluePlus.stopScan();
     await _scanSubscription?.cancel();
@@ -88,7 +60,7 @@ class BleManager {
       final connected = state == BluetoothConnectionState.connected;
       onConnectionStateChange?.call(connected);
     });
-    await device.connect(autoConnect: false, license: License.nonprofit);
+    await device.connect(autoConnect: false);
     await _discoverAndSubscribe(device);
   }
 
