@@ -215,9 +215,10 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start, // Fixed typo on line 220 cleanly!
           children: [
             Row(
-              mainAxisAlignment: Main => _ReaderHomePageState(),
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   _isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
