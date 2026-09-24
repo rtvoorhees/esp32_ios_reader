@@ -16,8 +16,8 @@ class BleManager {
   void Function(bool connected)? onConnectionStateChange;
   void Function(String rawText)? onRawPacketLog;
 
-  // Local state memory map tracking your 4 physical nodes persistently
-  final Map<int, NodeMetrics> _savedNodesMap = {
+  // A persistent data cache that stays alive between separate incoming wireless transmissions!
+  static final Map<int, NodeMetrics> _persistentNodesMap = {
     1: const NodeMetrics(id: 1, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
     2: const NodeMetrics(id: 2, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
     3: const NodeMetrics(id: 3, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
@@ -93,7 +93,6 @@ class BleManager {
     });
   }
 
-  // ROBUST PARSER: Handles continuous combined token blocks completely space-sanitized
   void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
@@ -116,30 +115,30 @@ class BleManager {
           currentId = int.tryParse(val) ?? -1;
         }
 
-        // Isolate each property change on our persistent tracking map to avoid cross-over bleeding
+        // Update the persistent static tracker map entry for this specific incoming node ID
         if (currentId >= 1 && currentId <= 4) {
-          NodeMetrics existing = _savedNodesMap[currentId]!;
+          NodeMetrics existing = _persistentNodesMap[currentId]!;
 
           if (key == 'B') {
             int batteryVal = int.tryParse(val) ?? 0;
-            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: batteryVal, rssi: existing.rssi, isAlive: true);
+            _persistentNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: batteryVal, rssi: existing.rssi, isAlive: true);
           } else if (key == 'T') {
             double tempVal = double.tryParse(val) ?? 0.0;
-            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: tempVal, humidity: existing.humidity, battery: existing.battery, rssi: existing.rssi, isAlive: true);
+            _persistentNodesMap[currentId] = NodeMetrics(id: currentId, temperature: tempVal, humidity: existing.humidity, battery: existing.battery, rssi: existing.rssi, isAlive: true);
           } else if (key == 'H') {
             double humidVal = double.tryParse(val) ?? 0.0;
-            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: humidVal, battery: existing.battery, rssi: existing.rssi, isAlive: true);
+            _persistentNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: humidVal, battery: existing.battery, rssi: existing.rssi, isAlive: true);
           } else if (key == 'R') {
             int rssiVal = int.tryParse(val) ?? -100;
-            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: existing.battery, rssi: rssiVal, isAlive: true);
+            _persistentNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: existing.battery, rssi: rssiVal, isAlive: true);
           } else if (key == 'A') {
             bool aliveVal = (int.tryParse(val) ?? 0) == 1;
-            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: existing.battery, rssi: existing.rssi, isAlive: aliveVal);
+            _persistentNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: existing.battery, rssi: existing.rssi, isAlive: aliveVal);
           }
         }
       }
 
-      onNodesUpdated?.call(_savedNodesMap.values.toList());
+      onNodesUpdated?.call(_persistentNodesMap.values.toList());
     } catch (e) {
       print("❌ Text stream parsing matrix exception: $e");
       onRawPacketLog?.call("Parsing Error: $e");

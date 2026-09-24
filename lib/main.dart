@@ -217,7 +217,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: Main => _ReaderHomePageState(),
               children: [
                 Icon(
                   _isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
