@@ -137,7 +137,8 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
               children: [
                 Icon(Icons.sensors, color: node.isAlive ? Colors.deepPurple : Colors.grey, size: 28),
                 if (node.isAlive)
