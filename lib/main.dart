@@ -39,14 +39,12 @@ class NodeMetrics {
   });
 }
 
-// Locate lines 42-46 and change it precisely to this:
 class ReaderHomePage extends StatefulWidget {
   const ReaderHomePage({super.key});
 
   @override
   State<ReaderHomePage> createState() => _ReaderHomePageState();
 }
-
 
 class _ReaderHomePageState extends State<ReaderHomePage> {
   final BleManager _bleManager = BleManager();
@@ -72,7 +70,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
       });
     };
 
-    // Listen to parsed map objects arriving from our updated text parser engine
     _bleManager.onNodesUpdated = (updatedNodes) {
       setState(() {
         _nodes = updatedNodes;
@@ -133,26 +130,24 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
-         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
               children: [
                 Icon(Icons.sensors, color: node.isAlive ? Colors.deepPurple : Colors.grey, size: 28),
-                if (node.isAlive)
-                  Row(
-                    children: [
-                      Icon(
-                        node.battery > 20 ? Icons.battery_charging_full : Icons.battery_alert,
-                        color: node.battery > 20 ? Colors.green : Colors.red,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 2),
-                      Text("${node.battery}%", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      node.battery > 20 ? Icons.battery_charging_full : Icons.battery_alert,
+                      color: node.isAlive ? (node.battery > 20 ? Colors.green : Colors.red) : Colors.grey,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 2),
+                    Text("${node.battery}%", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 4),
