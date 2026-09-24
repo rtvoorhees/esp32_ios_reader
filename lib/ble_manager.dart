@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'main.dart'; // Pairs cleanly to our NodeMetrics data structure layouts
 
 final Guid serviceUuid = Guid("5fbfc201-1fb5-459e-8fcc-c5c9c331914b");
 final Guid characteristicUuid = Guid("cbb5483e-36e1-4688-b7f5-ea07361b26a8");
@@ -11,7 +13,8 @@ class BleManager {
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<List<int>>? _valueSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
-  void Function(List<int> values)? onValuesReceived;
+  
+  void Function(List<NodeMetrics> nodes)? onNodesUpdated;
   void Function(bool connected)? onConnectionStateChange;
 
   Future<void> startScan() async {
@@ -62,20 +65,89 @@ class BleManager {
 
     await characteristic.setNotifyValue(true);
     _valueSubscription = characteristic.onValueReceived.listen((bytes) {
-      _handlePayload(bytes);
+      _parseTextPayload(bytes);
     });
   }
 
-  // Your original working 16-bit binary byte payload decoder loop!
-  void _handlePayload(List<int> bytes) {
-    if (bytes.length != 16) return;
-    final buffer = Uint8List.fromList(bytes).buffer;
-    final data = ByteData.view(buffer);
-    final values = <int>[];
-    for (int i = 0; i < 8; i++) {
-      values.add(data.getUint16(i * 2, Endian.little));
+  // TEXT TOKEN DECODER: Slices data lines safely and trims white spaces from numbers
+  void _parseTextPayload(List<int> bytes) {
+    if (bytes.isEmpty) return;
+
+    try {
+      String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
+      print("📥 RECEIVED PACKET TEXT: $textPacket");
+
+      Map<int, NodeMetrics> tempMap = {};
+      for (int i = 1; i <= 4; i++) {
+        tempMap[i] = NodeMetrics(id: i, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false);
+      }
+
+      List<String> tokens = textPacket.split('|');
+      
+      int currentId = -1;
+      int currentBattery = 0;
+      double currentTempC = 0.0;
+      double currentHumidity = 0.0;
+      int currentRssi = -100;
+      bool currentIsAlive = false;
+
+      for (String token in tokens) {
+        if (!token.contains(':')) continue;
+        
+        List<String> kv = token.split(':');
+        if (kv.length != 2) continue;
+
+        String key = kv[0].replaceAll(' ', '').trim().toUpperCase();
+        String val = kv[1].replaceAll(' ', '').trim();
+
+        if (key == 'N') {
+          if (currentId >= 1 && currentId <= 4) {
+            double tempF = (currentTempC * 9 / 5) + 32;
+            tempMap[currentId] = NodeMetrics(
+              id: currentId,
+              temperature: tempF,
+              humidity: currentHumidity,
+              battery: currentBattery,
+              rssi: currentRssi,
+              isAlive: currentIsAlive,
+            );
+          }
+          currentId = int.tryParse(val) ?? -1;
+          currentBattery = 0;
+          currentTempC = 0.0;
+          currentHumidity = 0.0;
+          currentRssi = -100;
+          currentIsAlive = false;
+        } else if (key == 'B') {
+          currentBattery = int.tryParse(val) ?? 0;
+        } else if (key == 'T') {
+          currentTempC = double.tryParse(val) ?? 0.0;
+        } else if (key == 'H') {
+          currentHumidity = double.tryParse(val) ?? 0.0;
+        } else if (key == 'R') {
+          currentRssi = int.tryParse(val) ?? -100;
+        } else if (key == 'A') {
+          currentIsAlive = (int.tryParse(val) ?? 0) == 1;
+        }
+      }
+
+      if (currentId >= 1 && currentId <= 4) {
+        double tempF = (currentTempC * 9 / 5) + 32;
+        tempMap[currentId] = NodeMetrics(
+          id: currentId,
+          temperature: tempF,
+          humidity: currentHumidity,
+          battery: currentBattery,
+          rssi: currentRssi,
+          isAlive: currentIsAlive,
+        );
+      }
+
+      // Sends the cleanly constructed list mapping straight to our dashboard listener channel!
+      onNodesUpdated?.call(tempMap.values.toList());
+    } catch (e) {
+      print("❌ Text stream parsing matrix exception: $e");
     }
-    onValuesReceived?.call(values);
   }
 
   Future<void> disconnect() async {

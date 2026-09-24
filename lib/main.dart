@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ESP32 Reader',
+      title: 'ESP32 Sensor Reader',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -19,6 +19,24 @@ class MyApp extends StatelessWidget {
       home: const ReaderHomePage(),
     );
   }
+}
+
+class NodeMetrics {
+  final int id;
+  final double temperature; // Converted and displayed as Fahrenheit
+  final double humidity;
+  final int battery; // Battery percentage 0-100
+  final int rssi;
+  final bool isAlive;
+
+  const NodeMetrics({
+    required this.id,
+    required this.temperature,
+    required this.humidity,
+    required this.battery,
+    required this.rssi,
+    required this.isAlive,
+  });
 }
 
 class ReaderHomePage extends StatefulWidget {
@@ -32,28 +50,42 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
   final BleManager _bleManager = BleManager();
   bool _isConnected = false;
   bool _isScanning = false;
-  List<int> _values = List<int>.filled(8, 0); // Your original working 8-channel array
+  List<NodeMetrics> _nodes = [];
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _resetNodes();
+
     _bleManager.onConnectionStateChange = (connected) {
       setState(() {
         _isConnected = connected;
         if (!connected) {
           _isScanning = false;
-          _values = List<int>.filled(8, 0);
+          _resetNodes();
         } else {
           _errorMessage = null;
         }
       });
     };
-    _bleManager.onValuesReceived = (values) {
+
+    _bleManager.onNodesUpdated = (updatedNodes) {
       setState(() {
-        _values = values;
+        _nodes = updatedNodes;
       });
     };
+  }
+
+  void _resetNodes() {
+    _nodes = List.generate(4, (index) => NodeMetrics(
+      id: index + 1,
+      temperature: 0.0,
+      humidity: 0.0,
+      battery: 0,
+      rssi: -100,
+      isAlive: false,
+    ));
   }
 
   Future<void> _connect() async {
@@ -85,25 +117,84 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     super.dispose();
   }
 
+  Widget _buildSensorNodeCard(NodeMetrics node) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: node.isAlive ? Colors.deepPurple.withOpacity(0.5) : Colors.grey.withOpacity(0.2),
+          width: 2,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(Icons.sensors, color: node.isAlive ? Colors.deepPurple : Colors.grey, size: 28),
+                Row(
+                  children: [
+                    Icon(
+                      node.battery > 20 ? Icons.battery_charging_full : Icons.battery_alert,
+                      color: node.isAlive ? (node.battery > 20 ? Colors.green : Colors.red) : Colors.grey,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 2),
+                    Text("${node.battery}%", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Node ${node.id}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const Divider(),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Temp:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                Text("${node.temperature.toStringAsFixed(1)}°F", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Humid:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                Text("${node.humidity.toStringAsFixed(1)}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Signal:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                Text(
+                  node.isAlive ? "${node.rssi} dBm" : "--- dBm",
+                  style: TextStyle(
+                    color: node.rssi > -70 ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Dynamically mapping your 4 hardware nodes out of your working 8-channel array
-    // Channel 1,3,5,7 -> Temperatures | Channel 2,4,6,8 -> Humidities
-    List<Map<String, dynamic>> nodes = [];
-    for (int i = 0; i < 4; i++) {
-      if ((i * 2) + 1 < _values.length) {
-        double rawC = _values[i * 2].toDouble() / 10.0;
-        double tempF = (rawC * 9 / 5) + 32; // Clean Fahrenheit conversion
-        
-        nodes.add({
-          'id': i + 1,
-          'temp': _values[i * 2] == 0 ? 0.0 : tempF,
-          'humidity': _values[(i * 2) + 1].toDouble(),
-          'battery': _isConnected ? 85 : 0, // Your requested Battery monitoring field addition!
-        });
-      }
-    }
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -141,7 +232,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
             ElevatedButton(
               onPressed: _isConnected ? _disconnect : (_isScanning ? null : _connect),
               child: Text(
-                _isConnected ? 'Disconnect' : (_isScanning ? 'Scanning...' : 'Connect to ESP32 Hub'),
+                _isConnected ? 'Disconnect' : (_isScanning ? 'Scanning...' : 'Connect to Hardware Hub'),
               ),
             ),
             const SizedBox(height: 24),
@@ -153,60 +244,9 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                   crossAxisSpacing: 12,
                   childAspectRatio: 0.85,
                 ),
-                itemCount: nodes.length,
+                itemCount: _nodes.length,
                 itemBuilder: (context, index) {
-                  final node = nodes[index];
-                  final bool hasData = _isConnected && _values.any((v) => v != 0);
-                  
-                  return Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: hasData ? Colors.deepPurple.withOpacity(0.5) : Colors.grey.withOpacity(0.2),
-                        width: 2,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.between,
-                            children: [
-                              Icon(Icons.sensors, color: hasData ? Colors.deepPurple : Colors.grey, size: 28),
-                              Row(
-                                children: [
-                                  Icon(Icons.battery_charging_full, color: hasData ? Colors.green : Colors.grey, size: 18),
-                                  const SizedBox(width: 2),
-                                  Text("${node['battery']}%", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text("Node ${node['id']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const Divider(),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text("Temp:", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                              Text("${node['temp'].toStringAsFixed(1)}°F", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text("Humid:", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                              Text("${node['humidity'].toStringAsFixed(0)}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+                  return _buildSensorNodeCard(_nodes[index]);
                 },
               ),
             ),
