@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'main.dart'; // Imports our NodeMetrics models cleanly
 
-// Must match exactly what is set in the ESP32 firmware
 final Guid serviceUuid = Guid("5fbfc201-1fb5-459e-8fcc-c5c9c331914b");
 final Guid characteristicUuid = Guid("cbb5483e-36e1-4688-b7f5-ea07361b26a8");
 const String targetDeviceName = "Feather_S3_Hub";
@@ -12,7 +12,9 @@ class BleManager {
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<List<int>>? _valueSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
-  void Function(List<int> values)? onValuesReceived;
+  
+  // Custom interface hook passing processed arrays back to our layout cards
+  void Function(List<NodeMetrics> nodes)? onNodesUpdated;
   void Function(bool connected)? onConnectionStateChange;
 
   Future<void> startScan() async {
@@ -21,17 +23,13 @@ class BleManager {
     
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
       for (final result in results) {
-        // Reads raw advertised string data to bypass iOS security name blocks!
         String advName = result.advertisementData.advName.toLowerCase().trim();
         if (advName.isEmpty) {
           advName = result.device.advName.toLowerCase().trim();
         }
 
-        // Snaps straight onto your live modules over-the-air
         final matchesName = advName.contains("feather") || advName.contains("hub");
-        final matchesService = result.advertisementData.serviceUuids.contains(serviceUuid);
-
-        if (matchesName || matchesService) {
+        if (matchesName) {
           await stopScan();
           await _connectToDevice(result.device);
           if (!completer.isCompleted) completer.complete();
@@ -41,11 +39,7 @@ class BleManager {
     });
 
     await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
-
-    await completer.future.timeout(
-      const Duration(seconds: 16),
-      onTimeout: () {},
-    );
+    await completer.future.timeout(const Duration(seconds: 16), onTimeout: () {});
   }
 
   Future<void> stopScan() async {
@@ -60,63 +54,97 @@ class BleManager {
       final connected = state == BluetoothConnectionState.connected;
       onConnectionStateChange?.call(connected);
     });
-    await device.connect(autoConnect: false);
+    await device.connect(autoConnect: false, license: License.nonprofit);
     await _discoverAndSubscribe(device);
   }
 
   Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
     final services = await device.discoverServices();
-    final service = services.firstWhere(
-      (s) => s.uuid == serviceUuid,
-      orElse: () => throw Exception("Service not found"),
-    );
-
-    final characteristic = service.characteristics.firstWhere(
-      (c) => c.uuid == characteristicUuid,
-      orElse: () => throw Exception("Characteristic not found"),
-    );
+    final service = services.firstWhere((s) => s.uuid == serviceUuid);
+    final characteristic = service.characteristics.firstWhere((c) => c.uuid == characteristicUuid);
 
     await characteristic.setNotifyValue(true);
     _valueSubscription = characteristic.onValueReceived.listen((bytes) {
-      _handlePayload(bytes);
+      _parseTextPayload(bytes);
     });
   }
 
-  void _handlePayload(List<int> bytes) {
-    if (bytes.isEmpty) {
-      print("⚠️ Received an empty Bluetooth data payload!");
-      return;
-    }
-    
-    print("📥 RAW SENSOR BYTES RECEIVED (Length: ${bytes.length}): $bytes");
+  // NEW PARSING ENGINE: Decodes string matrices like "N:1|B:58|T:72.84|H:56.25|R:-58|A:1"
+  void _parseTextPayload(List<int> bytes) {
+    if (bytes.isEmpty) return;
 
     try {
-      final buffer = Uint8List.fromList(bytes).buffer;
-      final data = ByteData.view(buffer);
-      final values = <int>[];
+      // Convert raw text data stream straight to a clean readable String
+      String textPacket = utf8.decode(bytes).trim();
+      print("📥 RECEIVED PACKET TEXT: $textPacket");
 
-      // Format A: Standard 16-bit integers
-      for (int i = 0; i < bytes.length; i += 2) {
-        if (i + 1 < bytes.length) {
-          values.add(data.getUint16(i, Endian.little));
-        }
+      // Initialize empty default placeholder node maps
+      Map<int, NodeMetrics> tempMap = {};
+      for (int i = 1; i <= 4; i++) {
+        tempMap[i] = NodeMetrics(id: i, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false);
       }
 
-      // Format B: Try parsing as 32-bit floats if 16-bit returns zeros
-      if (bytes.length >= 16 && values.every((v) => v == 0)) {
-        values.clear();
-        for (int i = 0; i < bytes.length; i += 4) {
-          if (i + 3 < bytes.length) {
-            double floatVal = data.getFloat32(i, Endian.little);
-            values.add((floatVal * 10).round()); 
+      // Splitting tokens apart using vertical column pipes
+      List<String> tokens = textPacket.split('|');
+      
+      int currentId = -1;
+      int currentBattery = 0;
+      double currentTempC = 0.0;
+      double currentHumidity = 0.0;
+      int currentRssi = -100;
+      bool currentIsAlive = false;
+
+      for (String token in tokens) {
+        List<String> kv = token.split(':');
+        if (kv.length != 2) continue;
+
+        String key = kv[0].trim();
+        String val = kv[1].trim();
+
+        if (key == 'N') {
+          // If we encounter a new Node key prefix, save any previously accumulated node parameters first
+          if (currentId != -1) {
+            double tempF = (currentTempC * 9 / 5) + 32; // NATIVE FAHRENHEIT CALCULATION
+            tempMap[currentId] = NodeMetrics(
+              id: currentId,
+              temperature: tempF,
+              humidity: currentHumidity,
+              battery: currentBattery,
+              rssi: currentRssi,
+              isAlive: currentIsAlive,
+            );
           }
+          currentId = int.tryParse(val) ?? -1;
+          currentIsAlive = false; // Reset temporary variables for fresh node profile blocks
+        } else if (key == 'B') {
+          currentBattery = int.tryParse(val) ?? 0;
+        } else if (key == 'T') {
+          currentTempC = double.tryParse(val) ?? 0.0;
+        } else if (key == 'H') {
+          currentHumidity = double.tryParse(val) ?? 0.0;
+        } else if (key == 'R') {
+          currentRssi = int.tryParse(val) ?? -100;
+        } else if (key == 'A') {
+          currentIsAlive = (int.tryParse(val) ?? 0) == 1;
         }
       }
 
-      print("📊 PARSED VALUES READY FOR DASHBOARD: $values");
-      onValuesReceived?.call(values);
+      // Flush final tracking token payload into the map array index properties
+      if (currentId != -1) {
+        double tempF = (currentTempC * 9 / 5) + 32;
+        tempMap[currentId] = NodeMetrics(
+          id: currentId,
+          temperature: tempF,
+          humidity: currentHumidity,
+          battery: currentBattery,
+          rssi: currentRssi,
+          isAlive: currentIsAlive,
+        );
+      }
+
+      onNodesUpdated?.call(tempMap.values.toList());
     } catch (e) {
-      print("❌ Telemetry byte string parsing exception: $e");
+      print("❌ Text stream parsing matrix exception: $e");
     }
   }
 

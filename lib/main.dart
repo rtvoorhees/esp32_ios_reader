@@ -23,8 +23,9 @@ class MyApp extends StatelessWidget {
 
 class NodeMetrics {
   final int id;
-  final double temperature;
+  final double temperature; // Stored and displayed as Fahrenheit
   final double humidity;
+  final int battery; // Battery percentage 0-100
   final int rssi;
   final bool isAlive;
 
@@ -32,6 +33,7 @@ class NodeMetrics {
     required this.id,
     required this.temperature,
     required this.humidity,
+    required this.battery,
     required this.rssi,
     required this.isAlive,
   });
@@ -41,7 +43,7 @@ class ReaderHomePage extends StatefulWidget {
   const ReaderHomePage({super.key});
 
   @override
-  State<ReaderHomePage> createState() => _ReaderHomePageState();
+  Widget build(BuildContext context) => _ReaderHomePageState();
 }
 
 class _ReaderHomePageState extends State<ReaderHomePage> {
@@ -54,45 +56,37 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
   @override
   void initState() {
     super.initState();
-    
-    _nodes = List.generate(4, (index) => NodeMetrics(
-      id: index + 1,
-      temperature: 0.0,
-      humidity: 0.0,
-      rssi: -100,
-      isAlive: false,
-    ));
+    _resetNodes();
 
     _bleManager.onConnectionStateChange = (connected) {
       setState(() {
         _isConnected = connected;
         if (!connected) {
           _isScanning = false;
-          _nodes = List.generate(4, (index) => NodeMetrics(
-            id: index + 1,
-            temperature: 0.0,
-            humidity: 0.0,
-            rssi: -100,
-            isAlive: false,
-          ));
+          _resetNodes();
         } else {
           _errorMessage = null;
         }
       });
     };
 
-    _bleManager.onValuesReceived = (rawChannels) {
-      if (rawChannels.length < 8) return;
+    // Listen to parsed map objects arriving from our updated text parser engine
+    _bleManager.onNodesUpdated = (updatedNodes) {
       setState(() {
-        _nodes = List.generate(4, (index) => NodeMetrics(
-          id: index + 1,
-          temperature: rawChannels[index * 2].toDouble() / 10.0,
-          humidity: rawChannels[(index * 2) + 1].toDouble(),
-          rssi: -65,
-          isAlive: true,
-        ));
+        _nodes = updatedNodes;
       });
     };
+  }
+
+  void _resetNodes() {
+    _nodes = List.generate(4, (index) => NodeMetrics(
+      id: index + 1,
+      temperature: 0.0,
+      humidity: 0.0,
+      battery: 0,
+      rssi: -100,
+      isAlive: false,
+    ));
   }
 
   Future<void> _connect() async {
@@ -140,39 +134,57 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.sensors, color: node.isAlive ? Colors.deepPurple : Colors.grey, size: 32),
-            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.between,
+              children: [
+                Icon(Icons.sensors, color: node.isAlive ? Colors.deepPurple : Colors.grey, size: 28),
+                if (node.isAlive)
+                  Row(
+                    children: [
+                      Icon(
+                        node.battery > 20 ? Icons.battery_charging_full : Icons.battery_alert,
+                        color: node.battery > 20 ? Colors.green : Colors.red,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 2),
+                      Text("${node.battery}%", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Text(
               "Node ${node.id}",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const Divider(),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Temp:", style: TextStyle(color: Colors.grey)),
-                Text("${node.temperature.toStringAsFixed(1)}°C", style: const TextStyle(fontWeight: FontWeight.bold)),
+                const Text("Temp:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                Text("${node.temperature.toStringAsFixed(1)}°F", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Humid:", style: TextStyle(color: Colors.grey)),
-                Text("${node.humidity.toStringAsFixed(0)}%", style: const TextStyle(fontWeight: FontWeight.bold)),
+                const Text("Humid:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                Text("${node.humidity.toStringAsFixed(1)}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Signal:", style: TextStyle(color: Colors.grey)),
+                const Text("Signal:", style: TextStyle(color: Colors.grey, fontSize: 13)),
                 Text(
                   "${node.rssi} dBm",
                   style: TextStyle(
                     color: node.rssi > -70 ? Colors.green : Colors.orange,
                     fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
                 ),
               ],
