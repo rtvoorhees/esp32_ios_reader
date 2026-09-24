@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'main.dart'; // Pairs cleanly to our NodeMetrics data structure layouts
+import 'main.dart'; 
 
 final Guid serviceUuid = Guid("5fbfc201-1fb5-459e-8fcc-c5c9c331914b");
 final Guid characteristicUuid = Guid("cbb5483e-36e1-4688-b7f5-ea07361b26a8");
@@ -16,6 +15,9 @@ class BleManager {
   
   void Function(List<NodeMetrics> nodes)? onNodesUpdated;
   void Function(bool connected)? onConnectionStateChange;
+  
+  // Pipeline wire sending raw data straight to your on-screen visual console banner
+  void Function(String rawText)? onRawPacketLog;
 
   Future<void> startScan() async {
     await stopScan();
@@ -69,13 +71,14 @@ class BleManager {
     });
   }
 
-  // TEXT TOKEN DECODER: Slices data lines safely and trims white spaces from numbers
   void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
     try {
       String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
-      print("📥 RECEIVED PACKET TEXT: $textPacket");
+      
+      // Updates the on-screen visual banner with whatever text arrived from your ESP32!
+      onRawPacketLog?.call(textPacket);
 
       Map<int, NodeMetrics> tempMap = {};
       for (int i = 1; i <= 4; i++) {
@@ -143,10 +146,10 @@ class BleManager {
         );
       }
 
-      // Sends the cleanly constructed list mapping straight to our dashboard listener channel!
       onNodesUpdated?.call(tempMap.values.toList());
     } catch (e) {
       print("❌ Text stream parsing matrix exception: $e");
+      onRawPacketLog?.call("Parsing Error: $e");
     }
   }
 

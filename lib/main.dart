@@ -52,6 +52,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
   bool _isScanning = false;
   List<NodeMetrics> _nodes = [];
   String? _errorMessage;
+  String _liveDebugString = "No wireless packets received yet. Press Connect.";
 
   @override
   void initState() {
@@ -64,8 +65,10 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
         if (!connected) {
           _isScanning = false;
           _resetNodes();
+          _liveDebugString = "Disconnected from Hardware Hub.";
         } else {
           _errorMessage = null;
+          _liveDebugString = "Connected! Awaiting first text data packet stream over-the-air...";
         }
       });
     };
@@ -73,6 +76,13 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     _bleManager.onNodesUpdated = (updatedNodes) {
       setState(() {
         _nodes = updatedNodes;
+      });
+    };
+
+    // VISUAL DEBUG HOOK: Catches raw text data strings arriving over-the-air!
+    _bleManager.onRawPacketLog = (rawText) {
+      setState(() {
+        _liveDebugString = rawText;
       });
     };
   }
@@ -92,6 +102,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     setState(() {
       _isScanning = true;
       _errorMessage = null;
+      _liveDebugString = "Initializing CoreBluetooth scan filters...";
     });
     try {
       await _bleManager.startScan();
@@ -99,6 +110,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
       setState(() {
         _errorMessage = e.toString();
         _isScanning = false;
+        _liveDebugString = "Scan Exception: $e";
       });
     }
   }
@@ -219,10 +231,39 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            
+            // VISUAL ON-SCREEN CONSOLE BANNER: Prints what your hardware hub is sending live!
+            Card(
+              color: Colors.black.withOpacity(0.05),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "📟 WIRELESS DATA OVER-THE-AIR PACKET STREAM:",
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _liveDebugString,
+                      style: const TextStyle(fontFamily: 'Courier', fontSize: 12, color: Colors.deepPurple, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            
             if (_errorMessage != null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
+                padding: const EdgeInsets.only(bottom: 12.0),
                 child: Text(
                   _errorMessage!,
                   style: const TextStyle(color: Colors.red),
@@ -235,7 +276,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 _isConnected ? 'Disconnect' : (_isScanning ? 'Scanning...' : 'Connect to Hardware Hub'),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
