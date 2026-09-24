@@ -39,12 +39,14 @@ class NodeMetrics {
   });
 }
 
+// Locate lines 42-46 and change it precisely to this:
 class ReaderHomePage extends StatefulWidget {
   const ReaderHomePage({super.key});
 
   @override
-  Widget build(BuildContext context) => _ReaderHomePageState();
+  State<ReaderHomePage> createState() => _ReaderHomePageState();
 }
+
 
 class _ReaderHomePageState extends State<ReaderHomePage> {
   final BleManager _bleManager = BleManager();
@@ -131,7 +133,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+         mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Row(
