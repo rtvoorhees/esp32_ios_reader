@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
 
 class NodeMetrics {
   final int id;
-  final double temperature; // Stored and displayed as Fahrenheit
+  final double temperature; // Converted and displayed as Fahrenheit
   final double humidity;
   final int battery; // Battery percentage 0-100
   final int rssi;
@@ -218,7 +218,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
-            ),
+                ),
             const SizedBox(height: 16),
             if (_errorMessage != null)
               Padding(

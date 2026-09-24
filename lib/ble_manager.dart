@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'main.dart'; // Imports our NodeMetrics models cleanly
+import 'main.dart'; // Imports our NodeMetrics model configuration cleanly
 
 final Guid serviceUuid = Guid("5fbfc201-1fb5-459e-8fcc-c5c9c331914b");
 final Guid characteristicUuid = Guid("cbb5483e-36e1-4688-b7f5-ea07361b26a8");
@@ -69,12 +68,14 @@ class BleManager {
     });
   }
 
+  // TEXT DECODER ENGINE: Processes sanitized strings like "N:1|B:58|T:72.84|H:56.25|R:-58|A:1"
   void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
     try {
-      String textPacket = utf8.decode(bytes).trim();
-      print("📥 RECEIVED PACKET TEXT: $textPacket");
+      // Decode data bytes and forcefully remove all carriage returns or hidden spacing layout metrics
+      String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
+      print("📥 RECEIVED SANITIZED PACKET TEXT: $textPacket");
 
       Map<int, NodeMetrics> tempMap = {};
       for (int i = 1; i <= 4; i++) {
@@ -91,6 +92,8 @@ class BleManager {
       bool currentIsAlive = false;
 
       for (String token in tokens) {
+        if (!token.contains(':')) continue;
+        
         List<String> kv = token.split(':');
         if (kv.length != 2) continue;
 
