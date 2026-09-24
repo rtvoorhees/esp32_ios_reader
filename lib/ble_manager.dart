@@ -13,7 +13,6 @@ class BleManager {
   StreamSubscription<List<int>>? _valueSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   
-  // Custom interface hook passing processed arrays back to our layout cards
   void Function(List<NodeMetrics> nodes)? onNodesUpdated;
   void Function(bool connected)? onConnectionStateChange;
 
@@ -69,22 +68,20 @@ class BleManager {
     });
   }
 
-  // NEW PARSING ENGINE: Decodes string matrices like "N:1|B:58|T:72.84|H:56.25|R:-58|A:1"
+  // TEXT DECODER: Parses strings like "N:1|B:58|T:72.84|H:56.25|R:-58|A:1"
   void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
     try {
-      // Convert raw text data stream straight to a clean readable String
       String textPacket = utf8.decode(bytes).trim();
       print("📥 RECEIVED PACKET TEXT: $textPacket");
 
-      // Initialize empty default placeholder node maps
+      // Initialize default maps for 4 nodes
       Map<int, NodeMetrics> tempMap = {};
       for (int i = 1; i <= 4; i++) {
         tempMap[i] = NodeMetrics(id: i, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false);
       }
 
-      // Splitting tokens apart using vertical column pipes
       List<String> tokens = textPacket.split('|');
       
       int currentId = -1;
@@ -102,9 +99,8 @@ class BleManager {
         String val = kv[1].trim();
 
         if (key == 'N') {
-          // If we encounter a new Node key prefix, save any previously accumulated node parameters first
           if (currentId != -1) {
-            double tempF = (currentTempC * 9 / 5) + 32; // NATIVE FAHRENHEIT CALCULATION
+            double tempF = (currentTempC * 9 / 5) + 32;
             tempMap[currentId] = NodeMetrics(
               id: currentId,
               temperature: tempF,
@@ -115,7 +111,7 @@ class BleManager {
             );
           }
           currentId = int.tryParse(val) ?? -1;
-          currentIsAlive = false; // Reset temporary variables for fresh node profile blocks
+          currentIsAlive = false;
         } else if (key == 'B') {
           currentBattery = int.tryParse(val) ?? 0;
         } else if (key == 'T') {
@@ -129,7 +125,6 @@ class BleManager {
         }
       }
 
-      // Flush final tracking token payload into the map array index properties
       if (currentId != -1) {
         double tempF = (currentTempC * 9 / 5) + 32;
         tempMap[currentId] = NodeMetrics(
