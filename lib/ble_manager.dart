@@ -4,7 +4,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'main.dart'; 
 
 final Guid serviceUuid = Guid("5fbfc201-1fb5-459e-8fcc-c5c9c331914b");
-final Guid characteristicUuid = Guid("cbb5483e-36e1-4688-b7f5-ea07361b26a8");
 const String targetDeviceName = "Feather_S3_Hub";
 
 class BleManager {
@@ -15,8 +14,6 @@ class BleManager {
   
   void Function(List<NodeMetrics> nodes)? onNodesUpdated;
   void Function(bool connected)? onConnectionStateChange;
-  
-  // Pipeline wire sending raw data straight to your on-screen visual console banner
   void Function(String rawText)? onRawPacketLog;
 
   Future<void> startScan() async {
@@ -60,13 +57,34 @@ class BleManager {
     await _discoverAndSubscribe(device);
   }
 
+  // AUTO-DISCOVERY UPGRADE: Searches your services and locks onto the working characteristic channel dynamically!
   Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
     final services = await device.discoverServices();
-    final service = services.firstWhere((s) => s.uuid == serviceUuid);
-    final characteristic = service.characteristics.firstWhere((c) => c.uuid == characteristicUuid);
+    
+    // Find the primary matching service container or fallback to the first active secondary service tier
+    final service = services.firstWhere(
+      (s) => s.uuid == serviceUuid,
+      orElse: () => services.firstWhere((s) => s.characteristics.isNotEmpty),
+    );
 
-    await characteristic.setNotifyValue(true);
-    _valueSubscription = characteristic.onValueReceived.listen((bytes) {
+    BluetoothCharacteristic? targetCharacteristic;
+
+    // Cycle through all hidden keys inside the service to find the one actively allowing Notifications or Indications
+    for (var characteristic in service.characteristics) {
+      if (characteristic.properties.notify || characteristic.properties.indicate) {
+        targetCharacteristic = characteristic;
+        break;
+      }
+    }
+
+    // Fallback: If no strict notify flag is raised, automatically lock onto the first available index channel entry
+    targetCharacteristic ??= service.characteristics.first;
+
+    print("🛰️ AUTO-LOCKED WORKING CHARACTERISTIC UUID: ${targetCharacteristic.uuid}");
+    onRawPacketLog?.call("Subscribed to channel: ${targetCharacteristic.uuid.toString().substring(0, 8)}...");
+
+    await targetCharacteristic.setNotifyValue(true);
+    _valueSubscription = targetCharacteristic.onValueReceived.listen((bytes) {
       _parseTextPayload(bytes);
     });
   }
@@ -76,8 +94,6 @@ class BleManager {
 
     try {
       String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
-      
-      // Updates the on-screen visual banner with whatever text arrived from your ESP32!
       onRawPacketLog?.call(textPacket);
 
       Map<int, NodeMetrics> tempMap = {};
@@ -96,7 +112,6 @@ class BleManager {
 
       for (String token in tokens) {
         if (!token.contains(':')) continue;
-        
         List<String> kv = token.split(':');
         if (kv.length != 2) continue;
 
@@ -148,7 +163,7 @@ class BleManager {
 
       onNodesUpdated?.call(tempMap.values.toList());
     } catch (e) {
-      print("❌ Text stream parsing matrix exception: $e");
+      print("❌ Text stream parsing exception: $e");
       onRawPacketLog?.call("Parsing Error: $e");
     }
   }
