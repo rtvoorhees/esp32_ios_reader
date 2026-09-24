@@ -16,6 +16,14 @@ class BleManager {
   void Function(bool connected)? onConnectionStateChange;
   void Function(String rawText)? onRawPacketLog;
 
+  // Local state memory map tracking your 4 physical nodes persistently
+  final Map<int, NodeMetrics> _savedNodesMap = {
+    1: const NodeMetrics(id: 1, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
+    2: const NodeMetrics(id: 2, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
+    3: const NodeMetrics(id: 3, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
+    4: const NodeMetrics(id: 4, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
+  };
+
   Future<void> startScan() async {
     await stopScan();
     final completer = Completer<void>();
@@ -57,11 +65,9 @@ class BleManager {
     await _discoverAndSubscribe(device);
   }
 
-  // AUTO-DISCOVERY UPGRADE: Searches your services and locks onto the working characteristic channel dynamically!
   Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
     final services = await device.discoverServices();
     
-    // Find the primary matching service container or fallback to the first active secondary service tier
     final service = services.firstWhere(
       (s) => s.uuid == serviceUuid,
       orElse: () => services.firstWhere((s) => s.characteristics.isNotEmpty),
@@ -69,7 +75,6 @@ class BleManager {
 
     BluetoothCharacteristic? targetCharacteristic;
 
-    // Cycle through all hidden keys inside the service to find the one actively allowing Notifications or Indications
     for (var characteristic in service.characteristics) {
       if (characteristic.properties.notify || characteristic.properties.indicate) {
         targetCharacteristic = characteristic;
@@ -77,7 +82,6 @@ class BleManager {
       }
     }
 
-    // Fallback: If no strict notify flag is raised, automatically lock onto the first available index channel entry
     targetCharacteristic ??= service.characteristics.first;
 
     print("🛰️ AUTO-LOCKED WORKING CHARACTERISTIC UUID: ${targetCharacteristic.uuid}");
@@ -89,6 +93,7 @@ class BleManager {
     });
   }
 
+  // ROBUST PARSER: Handles continuous combined token blocks completely space-sanitized
   void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
@@ -96,19 +101,8 @@ class BleManager {
       String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
       onRawPacketLog?.call(textPacket);
 
-      Map<int, NodeMetrics> tempMap = {};
-      for (int i = 1; i <= 4; i++) {
-        tempMap[i] = NodeMetrics(id: i, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false);
-      }
-
       List<String> tokens = textPacket.split('|');
-      
       int currentId = -1;
-      int currentBattery = 0;
-      double currentTempC = 0.0;
-      double currentHumidity = 0.0;
-      int currentRssi = -100;
-      bool currentIsAlive = false;
 
       for (String token in tokens) {
         if (!token.contains(':')) continue;
@@ -119,51 +113,35 @@ class BleManager {
         String val = kv[1].replaceAll(' ', '').trim();
 
         if (key == 'N') {
-          if (currentId >= 1 && currentId <= 4) {
-            double tempF = (currentTempC * 9 / 5) + 32;
-            tempMap[currentId] = NodeMetrics(
-              id: currentId,
-              temperature: tempF,
-              humidity: currentHumidity,
-              battery: currentBattery,
-              rssi: currentRssi,
-              isAlive: currentIsAlive,
-            );
-          }
           currentId = int.tryParse(val) ?? -1;
-          currentBattery = 0;
-          currentTempC = 0.0;
-          currentHumidity = 0.0;
-          currentRssi = -100;
-          currentIsAlive = false;
-        } else if (key == 'B') {
-          currentBattery = int.tryParse(val) ?? 0;
-        } else if (key == 'T') {
-          currentTempC = double.tryParse(val) ?? 0.0;
-        } else if (key == 'H') {
-          currentHumidity = double.tryParse(val) ?? 0.0;
-        } else if (key == 'R') {
-          currentRssi = int.tryParse(val) ?? -100;
-        } else if (key == 'A') {
-          currentIsAlive = (int.tryParse(val) ?? 0) == 1;
+        }
+
+        // Isolate each property change on our persistent tracking map to avoid cross-over bleeding
+        if (currentId >= 1 && currentId <= 4) {
+          NodeMetrics existing = _savedNodesMap[currentId]!;
+
+          if (key == 'B') {
+            int batteryVal = int.tryParse(val) ?? 0;
+            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: batteryVal, rssi: existing.rssi, isAlive: true);
+          } else if (key == 'T') {
+            double tempVal = double.tryParse(val) ?? 0.0;
+            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: tempVal, humidity: existing.humidity, battery: existing.battery, rssi: existing.rssi, isAlive: true);
+          } else if (key == 'H') {
+            double humidVal = double.tryParse(val) ?? 0.0;
+            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: humidVal, battery: existing.battery, rssi: existing.rssi, isAlive: true);
+          } else if (key == 'R') {
+            int rssiVal = int.tryParse(val) ?? -100;
+            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: existing.battery, rssi: rssiVal, isAlive: true);
+          } else if (key == 'A') {
+            bool aliveVal = (int.tryParse(val) ?? 0) == 1;
+            _savedNodesMap[currentId] = NodeMetrics(id: currentId, temperature: existing.temperature, humidity: existing.humidity, battery: existing.battery, rssi: existing.rssi, isAlive: aliveVal);
+          }
         }
       }
 
-      if (currentId >= 1 && currentId <= 4) {
-        double tempF = (currentTempC * 9 / 5) + 32;
-        tempMap[currentId] = NodeMetrics(
-          id: currentId,
-          temperature: tempF,
-          humidity: currentHumidity,
-          battery: currentBattery,
-          rssi: currentRssi,
-          isAlive: currentIsAlive,
-        );
-      }
-
-      onNodesUpdated?.call(tempMap.values.toList());
+      onNodesUpdated?.call(_savedNodesMap.values.toList());
     } catch (e) {
-      print("❌ Text stream parsing exception: $e");
+      print("❌ Text stream parsing matrix exception: $e");
       onRawPacketLog?.call("Parsing Error: $e");
     }
   }

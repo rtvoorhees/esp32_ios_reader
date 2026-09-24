@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
 
 class NodeMetrics {
   final int id;
-  final double temperature; // Converted and displayed as Fahrenheit
+  final double temperature; // Fahrenheit
   final double humidity;
   final int battery; // Battery percentage 0-100
   final int rssi;
@@ -79,7 +79,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
       });
     };
 
-    // VISUAL DEBUG HOOK: Catches raw text data strings arriving over-the-air!
     _bleManager.onRawPacketLog = (rawText) {
       setState(() {
         _liveDebugString = rawText;
@@ -232,8 +231,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
               ],
             ),
             const SizedBox(height: 12),
-            
-            // VISUAL ON-SCREEN CONSOLE BANNER: Prints what your hardware hub is sending live!
             Card(
               color: Colors.black.withOpacity(0.05),
               elevation: 0,
@@ -260,7 +257,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
               ),
             ),
             const SizedBox(height: 12),
-            
             if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
