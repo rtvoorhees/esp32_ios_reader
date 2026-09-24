@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'main.dart'; // Imports our NodeMetrics models cleanly
 
@@ -68,22 +69,18 @@ class BleManager {
     });
   }
 
-  // TEXT DECODER: Parses strings like "N:1|B:58|T:72.84|H:56.25|R:-58|A:1"
-    void _parseTextPayload(List<int> bytes) {
+  void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
     try {
-      // Convert raw bytes to text and sanitize background line breaks
       String textPacket = utf8.decode(bytes).trim();
       print("📥 RECEIVED PACKET TEXT: $textPacket");
 
-      // Initialize clean default layouts for your 4 nodes
       Map<int, NodeMetrics> tempMap = {};
       for (int i = 1; i <= 4; i++) {
         tempMap[i] = NodeMetrics(id: i, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false);
       }
 
-      // Slice the columns apart cleanly across the vertical column pipes
       List<String> tokens = textPacket.split('|');
       
       int currentId = -1;
@@ -101,7 +98,6 @@ class BleManager {
         String val = kv[1].trim();
 
         if (key == 'N') {
-          // Save the completed parameters of the previous node block before moving to the next ID
           if (currentId >= 1 && currentId <= 4) {
             double tempF = (currentTempC * 9 / 5) + 32;
             tempMap[currentId] = NodeMetrics(
@@ -113,7 +109,6 @@ class BleManager {
               isAlive: currentIsAlive,
             );
           }
-          // Reset temporary variables for the fresh node tracking row
           currentId = int.tryParse(val) ?? -1;
           currentBattery = 0;
           currentTempC = 0.0;
@@ -133,7 +128,6 @@ class BleManager {
         }
       }
 
-      // CRITICAL FIX: Flush the final remaining node parameters (Node 4) into the layout maps list!
       if (currentId >= 1 && currentId <= 4) {
         double tempF = (currentTempC * 9 / 5) + 32;
         tempMap[currentId] = NodeMetrics(
@@ -145,14 +139,6 @@ class BleManager {
           isAlive: currentIsAlive,
         );
       }
-
-      // Safely pass the complete list arrays back to main.dart UI layout update triggers
-      onNodesUpdated?.call(tempMap.values.toList());
-    } catch (e) {
-      print("❌ Text stream parsing matrix exception: $e");
-    }
-  }
-
 
       onNodesUpdated?.call(tempMap.values.toList());
     } catch (e) {
