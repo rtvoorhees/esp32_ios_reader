@@ -16,7 +16,7 @@ class BleManager {
   void Function(bool connected)? onConnectionStateChange;
   void Function(String rawText)? onRawPacketLog;
 
-  // Static tracking map that preserves data for other nodes when single bursts arrive
+  // A persistent data cache that stays alive between separate incoming wireless transmissions!
   static final Map<int, NodeMetrics> _persistentNodesMap = {
     1: const NodeMetrics(id: 1, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
     2: const NodeMetrics(id: 2, temperature: 0.0, humidity: 0.0, battery: 0, rssi: -100, isAlive: false),
@@ -100,7 +100,8 @@ class BleManager {
       String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
       onRawPacketLog?.call(textPacket);
 
-      List<String> tokens = textPacket.split('|');
+      // DUAL DELIMITER RESOLUTION: Splits cleanly across both pipes (|) and semicolons (;)
+      List<String> tokens = textPacket.split(RegExp(r'[|;]'));
       int currentId = -1;
 
       for (String token in tokens) {
@@ -137,7 +138,7 @@ class BleManager {
         }
       }
 
-      // CRITICAL FIX: Force deep list duplication cloning on the callback to destroy UI rendering memory cache locks
+      // Force continuous array rendering reconstruction on callback to ensure background updates refresh live
       onNodesUpdated?.call(List<NodeMetrics>.from(_persistentNodesMap.values));
     } catch (e) {
       print("❌ Text stream parsing matrix exception: $e");
