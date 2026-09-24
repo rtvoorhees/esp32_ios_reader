@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'main.dart'; // Imports our NodeMetrics model configuration cleanly
+import 'main.dart'; // Clean imports for the shared metrics data structures
 
 final Guid serviceUuid = Guid("5fbfc201-1fb5-459e-8fcc-c5c9c331914b");
 final Guid characteristicUuid = Guid("cbb5483e-36e1-4688-b7f5-ea07361b26a8");
@@ -68,12 +68,11 @@ class BleManager {
     });
   }
 
-  // TEXT DECODER ENGINE: Processes sanitized strings like "N:1|B:58|T:72.84|H:56.25|R:-58|A:1"
+  // RECONFIGURED TEXT PARSER: Strips out inner spacing filters to convert string decimals flawlessly
   void _parseTextPayload(List<int> bytes) {
     if (bytes.isEmpty) return;
 
     try {
-      // Decode data bytes and forcefully remove all carriage returns or hidden spacing layout metrics
       String textPacket = utf8.decode(bytes).replaceAll('\r', '').replaceAll('\n', '').trim();
       print("📥 RECEIVED SANITIZED PACKET TEXT: $textPacket");
 
@@ -98,7 +97,8 @@ class BleManager {
         if (kv.length != 2) continue;
 
         String key = kv[0].trim().toUpperCase();
-        String val = kv[1].trim();
+        // CRITICAL UPDATE: Strips all empty padding spaces from within values so double.tryParse functions don't return zero
+        String val = kv[1].replaceAll(' ', '').trim();
 
         if (key == 'N') {
           if (currentId >= 1 && currentId <= 4) {
