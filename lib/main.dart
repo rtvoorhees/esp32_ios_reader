@@ -56,14 +56,13 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
   String? _errorMessage;
   String _liveDebugString = "No wireless packets received yet. Press Connect.";
   
-  // Local RAM list to hold your custom room names
   List<String> _roomNames = List.generate(4, (index) => "Node ${index + 1}");
 
   @override
   void initState() {
     super.initState();
     _resetNodes();
-    _loadSavedRoomNames(); // Pull custom room strings out of iPhone hardware memory on startup
+    _loadSavedRoomNames();
 
     _bleManager.onConnectionStateChange = (connected) {
       setState(() {
@@ -92,7 +91,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     };
   }
 
-  // PERSISTENT STORAGE: Read custom typed text strings on boot
   Future<void> _loadSavedRoomNames() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -102,7 +100,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     });
   }
 
-  // PERSISTENT STORAGE: Lock custom typed text strings into iPhone database disk
   Future<void> _saveRoomName(int nodeId, String cleanName) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('room_name_$nodeId', cleanName);
@@ -153,7 +150,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     super.dispose();
   }
 
-  // INTERACTIVE OVERLAY: Slides open a clean keyboard card to type room names easily
   void _showRoomNameEditor(int nodeId, String currentName) {
     final TextEditingController controller = TextEditingController(text: currentName == "Node $nodeId" ? "" : currentName);
     
@@ -240,8 +236,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
               ],
             ),
             const SizedBox(height: 2),
-            
-            // TAP TO EDIT ROW: Click anywhere right on the label text to change the name!
             InkWell(
               onTap: () => _showRoomNameEditor(node.id, displayName),
               borderRadius: BorderRadius.circular(6),
@@ -265,7 +259,6 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 ),
               ),
             ),
-            
             const Divider(),
             const SizedBox(height: 2),
             Row(
@@ -298,3 +291,21 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('ESP32 Node Dashboard'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
