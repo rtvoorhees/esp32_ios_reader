@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ble_manager.dart';
 
 void main() {
@@ -12,6 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ESP32 Sensor Reader',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -53,11 +55,15 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
   List<NodeMetrics> _nodes = [];
   String? _errorMessage;
   String _liveDebugString = "No wireless packets received yet. Press Connect.";
+  
+  // Local RAM list to hold your custom room names
+  List<String> _roomNames = List.generate(4, (index) => "Node ${index + 1}");
 
   @override
   void initState() {
     super.initState();
     _resetNodes();
+    _loadSavedRoomNames(); // 🛰️ Pull custom room strings out of iPhone hardware memory on startup
 
     _bleManager.onConnectionStateChange = (connected) {
       setState(() {
@@ -84,6 +90,25 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
         _liveDebugString = rawText;
       });
     };
+  }
+
+  // PERSISTENT STORAGE: Read custom typed text strings on boot
+  Future<void> _loadSavedRoomNames() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      for (int i = 0; i < 4; i++) {
+        _roomNames[i] = prefs.getString('room_name_${i + 1}') ?? "Node ${i + 1}";
+      }
+    });
+  }
+
+  // PERSISTENT STORAGE: Lock custom typed text strings into iPhone database disk
+  Future<void> _saveRoomName(int nodeId, String cleanName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('room_name_$nodeId', cleanName);
+    setState(() {
+      _roomNames[nodeId - 1] = cleanName;
+    });
   }
 
   void _resetNodes() {
@@ -128,7 +153,60 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
     super.dispose();
   }
 
+  // INTERACTIVE OVERLAY: Slides open a clean keyboard card to type room names easily
+  void _showRoomNameEditor(int nodeId, String currentName) {
+    final TextEditingController controller = TextEditingController(text: currentName == "Node $nodeId" ? "" : currentName);
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Rename Node $nodeId", style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Enter a custom room name location layout:", style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: "e.g. Living Room, Garage, Attic",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => controller.clear(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                String cleanName = controller.text.trim();
+                if (cleanName.isEmpty) cleanName = "Node $nodeId";
+                _saveRoomName(nodeId, cleanName);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
+              child: const Text("Save Location"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildSensorNodeCard(NodeMetrics node) {
+    final String displayName = _roomNames[node.id - 1];
+    
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -161,11 +239,33 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              "Node ${node.id}",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            const SizedBox(height: 2),
+            
+            // TAP TO EDIT ROW: Click anywhere right on the label text to change the name!
+            InkWell(
+              onTap: () => _showRoomNameEditor(node.id, displayName),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        displayName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.edit, size: 14, color: Colors.grey),
+                  ],
+                ),
+              ),
             ),
+            
             const Divider(),
             const SizedBox(height: 2),
             Row(
@@ -198,99 +298,3 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('ESP32 Node Dashboard'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-                  color: _isConnected ? Colors.green : Colors.grey,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _isConnected ? 'Connected' : (_isScanning ? 'Scanning...' : 'Disconnected'),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Card(
-              color: Colors.black.withOpacity(0.05),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.grey.withOpacity(0.3)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "📟 WIRELESS DATA OVER-THE-AIR PACKET STREAM:",
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _liveDebugString,
-                      style: const TextStyle(fontFamily: 'Courier', fontSize: 12, color: Colors.deepPurple, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ElevatedButton(
-              onPressed: _isConnected ? _disconnect : (_isScanning ? null : _connect),
-              child: Text(
-                _isConnected ? 'Disconnect' : (_isScanning ? 'Scanning...' : 'Connect to Hardware Hub'),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.85,
-                ),
-                itemCount: _nodes.length,
-                itemBuilder: (context, index) {
-                  return _buildSensorNodeCard(_nodes[index]);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
