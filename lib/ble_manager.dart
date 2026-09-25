@@ -65,7 +65,7 @@ class BleManager {
     await _discoverAndSubscribe(device);
   }
 
-  Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
+    Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
     final services = await device.discoverServices();
     
     final service = services.firstWhere(
@@ -91,6 +91,16 @@ class BleManager {
     _valueSubscription = targetCharacteristic.onValueReceived.listen((bytes) {
       _parseTextPayload(bytes);
     });
+
+    // 🚀 THE ULTIMATE USER EXPERIENCE FIX:
+    // Force an instant direct read from the Hub's cached memory track
+    // the exact split-second the wireless handshake finishes!
+    try {
+      List<int> initialBytes = await targetCharacteristic.read();
+      _parseTextPayload(initialBytes);
+    } catch (e) {
+      print("Initial cache read hitch: $e");
+    }
   }
 
   void _parseTextPayload(List<int> bytes) {
