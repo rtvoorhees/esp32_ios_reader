@@ -63,7 +63,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
   void initState() {
     super.initState();
     _resetNodes();
-    _loadSavedRoomNames(); // 🛰️ Pull custom room strings out of iPhone hardware memory on startup
+    _loadSavedRoomNames(); // Pull custom room strings out of iPhone hardware memory on startup
 
     _bleManager.onConnectionStateChange = (connected) {
       setState(() {
