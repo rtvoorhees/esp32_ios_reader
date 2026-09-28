@@ -262,7 +262,7 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
             const Divider(),
             const SizedBox(height: 2),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween, // LINE 265 PERFECTLY CLEAN!
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Temp:", style: TextStyle(color: Colors.grey, fontSize: 13)),
                 Text("${node.temperature.toStringAsFixed(1)}°F", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -308,3 +308,4 @@ class _ReaderHomePageState extends State<ReaderHomePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.start,
