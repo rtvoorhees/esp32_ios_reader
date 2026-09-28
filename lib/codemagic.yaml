@@ -1,0 +1,26 @@
+workflows:
+  default-workflow:
+    name: ESP32 Reader Production Track
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branches:
+        - main
+    scripts:
+      - name: Flush Build Cache and Dependencies
+        script: |
+          rm -rf ~/Library/Caches/CocoaPods
+          rm -rf ~/.pub-cache
+          flutter clean
+          flutter pub get
+      - name: Build production iOS application package
+        script: |
+          flutter build ipa --release --build-number=$BUILD_NUMBER
+    artifacts:
+      - build/ios/ipa/*.ipa
